@@ -1,0 +1,94 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    expose:
+      - "27017"
+    networks:
+      - petstore-network
+
+  pet-store1:
+    build: .
+    container_name: pet-store1
+    ports:
+      - "5001:8000"
+    expose:
+      - "8000"
+    environment:
+      - STORE_NAME=store1
+      - MONGODB_URI=mongodb://mongodb:27017
+      - APP_PORT=8000
+    depends_on:
+      - mongodb
+    restart: always
+    networks:
+      - petstore-network
+
+  pet-store2:
+    build: .
+    container_name: pet-store2
+    ports:
+      - "5002:8000"
+    expose:
+      - "8000"
+    environment:
+      - STORE_NAME=store2
+      - MONGODB_URI=mongodb://mongodb:27017
+      - APP_PORT=8000
+    depends_on:
+      - mongodb
+    restart: always
+    networks:
+      - petstore-network
+
+  pet-order1:
+    build: ./pet-order
+    container_name: pet-order1
+    ports:
+      - "5003:8080"
+    expose:
+      - "8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+      - pet-store1
+      - pet-store2
+    restart: always
+    networks:
+      - petstore-network
+
+  pet-order2:
+    build: ./pet-order
+    container_name: pet-order2
+    expose:
+      - "8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+      - pet-store1
+      - pet-store2
+    restart: always
+    networks:
+      - petstore-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - pet-store1
+      - pet-store2
+      - pet-order1
+      - pet-order2
+    networks:
+      - petstore-network
+    restart: always
+
+networks:
+  petstore-network:
+    driver: bridge
